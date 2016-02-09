@@ -4,8 +4,11 @@ import numpy as np, matplotlib.pyplot as mpl_plt, scipy.optimize as sci_opt
 Tc, Pc = 647, 22064000
 # 1 atm
 P = 101325
+mol_water_72 = 0.01622
+mol_water_105 = 0.01622
 # molar mass
 LiCl, H2O = 42.394, 18.01
+LiCl_mols = 1;
 
 
 # Input T is in C
@@ -112,26 +115,29 @@ def find_operating_range(Tin, Tout, Treg, RHin, RHout, guess):
     return [x_low, x_hi]
 
 
-def get_k(T):
+def get_k(x, T):
     T = convert_F_to_C(T)
-    operating_range = find_operating_range(72, 85, 105, .6, .8, .1)
+    P_sat = p_vap_solution(x, T)
 
-    P_hi = p_vap_solution(operating_range[0], T)
-    P_low = p_vap_solution(operating_range[1], T)
+    return P_sat / P
 
-    return (P_hi + P_low) / P / 2
 
+def find_moles_of_water(RH, T, guess):
+    T = convert_F_to_C(T)
+    f = lambda SH: (SH * P) / (((0.622 + 0.378 * SH) * p_vap_water(T)) * RH) - 1
+
+    return sci_opt.fsolve(f, guess) * 29 / 18
 
 def find_water_removed(x_in, RH, T):
     T = convert_F_to_C(T)
-    K = get_k(T)
+    K = get_k(x_in, T)
     # 50 mol/s basis for air
     V_in = 50
     # 1 mol/s basis for LiCl -> L_in * x_in = 1
-    L_in = 1 / x_in
-    A = L_in/K*V_in
+    L_in = LiCl_mols / x_in
+    A = L_in/(K*V_in)
     percent_abs = (np.power(A, 2) - A) / (np.power(A, 2) - 1)
-    return V_in * x_in * percent_abs
+    return V_in * find_moles_of_water(RH, T, .01) * percent_abs
 
 
 def plot_water_removed():
@@ -142,10 +148,59 @@ def plot_water_removed():
     mpl_plt.plot(x_range, y_range)
     mpl_plt.xlabel("LiCl mole fraction")
     mpl_plt.ylabel("Water Removed (mol/s per mol/s of LiCl)")
-    mpl_plt.savefig("Water_Removed.png")
     mpl_plt.show()
 
     return
 
+def power_req(x):
+
+    #Initialize constants
+    Mw_L = 42.39
+    Mw_H = 18.02
+    T_F = 313.71
+    T_I = 295.37
+    L = LiCl_mols / x
+
+    #Average molecular weight
+    Mw_avg = x * Mw_L + (1 - x) * Mw_H
+
+    #Converted value of heat capacity to mole basis (KJ/(mol*K)
+    Cp = 3.57 / 1000 * Mw_avg
+
+    #Power in KW
+    power = L * Cp * (T_F - T_I)
+
+    return power
+
+
+def plot_power():
+    range = find_operating_range(72, 85, 105, .6, .8, .1)
+    x = np.linspace(range[0], range[1], 100)
+    x_range = np.linspace(LiCl_mols / range[0], LiCl_mols / range[1], 100)
+    y_range = power_req(x)
+
+    mpl_plt.plot(x_range, y_range)
+    mpl_plt.xlabel("Total Liquid Flow Rate (mol/s)")
+    mpl_plt.ylabel("Power Required (kW)")
+    mpl_plt.show()
+
+    return
+
+
+def find_maximum_water_removed():
+    range = find_operating_range(72, 85, 105, .6, .8, .1)
+    x_range = np.linspace(range[0], range[1], 100)
+    y_range = find_water_removed(x_range, .6, 72)
+
+    return np.amax(y_range)
+
+#1.1
 # plot_VLE(72, 85, 105, .6, .8)
-plot_water_removed()
+# plot_water_removed()
+# find_operating_range(72, 85, 105, .6, .8)
+
+#1.2
+# plot_power()
+
+#1.3
+# find_maximum_water_removed()
