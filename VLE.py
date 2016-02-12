@@ -1,4 +1,4 @@
-import numpy as np, matplotlib.pyplot as mpl_plt, scipy.optimize as sci_opt
+import numpy as np, matplotlib.pyplot as mpl_plt, scipy.optimize as sci_opt, xlrd
 
 # K, Pa
 Tc, Pc = 647, 22064000
@@ -137,8 +137,10 @@ def find_water_absorbed(x_in, RH, T):
     percent_abs = (np.power(A, 2) - A) / (np.power(A, 2) - 1)
     return V_in * find_moles_of_water(RH, T, .01) * percent_abs
 
+
 def find_water_absorbed_alt(x_in, x_limit):
     return np.abs((LiCl_mols / x_in) - (LiCl_mols / x_limit))
+
 
 def plot_water_absorbed():
     range = find_operating_range(72, 85, 105, .6, .8, .1)
@@ -212,12 +214,34 @@ def find_maximum_water_removed():
 
     return np.amax(y_range)
 
+
 def find_maximum_water_removed_alt():
     range = find_operating_range(72, 85, 105, .6, .8, .1)
     x_range = np.linspace(range[0], range[1], 100)
     y_range = find_water_absorbed_alt(x_range, range[0])
 
     return np.amax(y_range)
+
+
+def graph_water_absorbed_excel():
+    data = np.loadtxt(open("data1.csv","rb"),delimiter=",")
+    x_range = data[0]
+    y_range = data[1]
+    mpl_plt.plot(x_range, y_range)
+    mpl_plt.xlabel("LiCl mole fraction")
+    mpl_plt.ylabel("Water Removed (mol/s per mol/s of LiCl)")
+    mpl_plt.savefig("Water_Absorbed_Exc")
+    mpl_plt.show()
+
+def graph_power_excel():
+    data = np.loadtxt(open("data2.csv","rb"),delimiter=",")
+    x_range = data[0]
+    y_range = data[1]
+    mpl_plt.plot(x_range, y_range)
+    mpl_plt.xlabel("LiCl mole fraction")
+    mpl_plt.ylabel("Power Required (kW)")
+    mpl_plt.savefig("Power_Required_Exc.png")
+    mpl_plt.show()
 
 #1.1
 plot_VLE(72, 85, 105, .6, .8)
@@ -231,3 +255,6 @@ plot_power()
 #1.3
 print(find_maximum_water_removed())
 print(find_maximum_water_removed_alt())
+
+graph_water_absorbed_excel()
+graph_power_excel()
