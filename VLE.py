@@ -8,7 +8,7 @@ mol_water_72 = 0.01622
 mol_water_105 = 0.01622
 # molar mass
 LiCl, H2O = 42.394, 18.01
-LiCl_mols = 1;
+LiCl_mols = 1
 
 
 # Input T is in C
@@ -116,19 +116,17 @@ def find_operating_range(Tin, Tout, Treg, RHin, RHout, guess):
 
 
 def get_k(x, T):
-    T = convert_F_to_C(T)
     P_sat = p_vap_solution(x, T)
-
     return P_sat / P
 
 
 def find_moles_of_water(RH, T, guess):
-    T = convert_F_to_C(T)
     f = lambda SH: (SH * P) / (((0.622 + 0.378 * SH) * p_vap_water(T)) * RH) - 1
 
     return sci_opt.fsolve(f, guess) * 29 / 18
 
-def find_water_removed(x_in, RH, T):
+
+def find_water_absorbed(x_in, RH, T):
     T = convert_F_to_C(T)
     K = get_k(x_in, T)
     # 50 mol/s basis for air
@@ -139,20 +137,40 @@ def find_water_removed(x_in, RH, T):
     percent_abs = (np.power(A, 2) - A) / (np.power(A, 2) - 1)
     return V_in * find_moles_of_water(RH, T, .01) * percent_abs
 
+def find_water_absorbed_alt(x_in, x_limit):
+    return np.abs((LiCl_mols / x_in) - (LiCl_mols / x_limit))
 
-def plot_water_removed():
+def plot_water_absorbed():
     range = find_operating_range(72, 85, 105, .6, .8, .1)
     x_range = np.linspace(range[0], range[1], 100)
-    y_range = find_water_removed(x_range, .6, 72)
+    y_range = find_water_absorbed(x_range, .6, 72)
 
     mpl_plt.plot(x_range, y_range)
+    mpl_plt.gca().get_yaxis().get_major_formatter().set_useOffset(False)
     mpl_plt.xlabel("LiCl mole fraction")
-    mpl_plt.ylabel("Water Removed (mol/s per mol/s of LiCl)")
+    mpl_plt.ylabel("Water Absorbed (mol/s per mol/s of LiCl)")
+    mpl_plt.savefig("Water_Absorbed")
     mpl_plt.show()
 
     return
 
-def power_req(x):
+
+def plot_water_absorbed_alt():
+    range = find_operating_range(72, 85, 105, .6, .8, .1)
+    x_range = np.linspace(range[0], range[1], 100)
+    y_range = find_water_absorbed_alt(x_range, range[0])
+
+    mpl_plt.plot(x_range, y_range)
+    mpl_plt.gca().get_yaxis().get_major_formatter().set_useOffset(False)
+    mpl_plt.xlabel("LiCl mole fraction")
+    mpl_plt.ylabel("Water Removed (mol/s per mol/s of LiCl)")
+    mpl_plt.savefig("Water_Absorbed_Alt")
+    mpl_plt.show()
+
+    return
+
+
+def find_power_req(x):
 
     #Initialize constants
     Mw_L = 42.39
@@ -165,7 +183,7 @@ def power_req(x):
     Mw_avg = x * Mw_L + (1 - x) * Mw_H
 
     #Converted value of heat capacity to mole basis (KJ/(mol*K)
-    Cp = 3.57 / 1000 * Mw_avg
+    Cp = 3.07 / 1000 * Mw_avg
 
     #Power in KW
     power = L * Cp * (T_F - T_I)
@@ -176,12 +194,12 @@ def power_req(x):
 def plot_power():
     range = find_operating_range(72, 85, 105, .6, .8, .1)
     x = np.linspace(range[0], range[1], 100)
-    x_range = np.linspace(LiCl_mols / range[0], LiCl_mols / range[1], 100)
-    y_range = power_req(x)
+    y_range = find_power_req(x)
 
-    mpl_plt.plot(x_range, y_range)
-    mpl_plt.xlabel("Total Liquid Flow Rate (mol/s)")
+    mpl_plt.plot(x, y_range)
+    mpl_plt.xlabel("LiCl mole fraction")
     mpl_plt.ylabel("Power Required (kW)")
+    mpl_plt.savefig("Power_Required.png")
     mpl_plt.show()
 
     return
@@ -190,17 +208,26 @@ def plot_power():
 def find_maximum_water_removed():
     range = find_operating_range(72, 85, 105, .6, .8, .1)
     x_range = np.linspace(range[0], range[1], 100)
-    y_range = find_water_removed(x_range, .6, 72)
+    y_range = find_water_absorbed(x_range, .6, 72)
+
+    return np.amax(y_range)
+
+def find_maximum_water_removed_alt():
+    range = find_operating_range(72, 85, 105, .6, .8, .1)
+    x_range = np.linspace(range[0], range[1], 100)
+    y_range = find_water_absorbed_alt(x_range, range[0])
 
     return np.amax(y_range)
 
 #1.1
-# plot_VLE(72, 85, 105, .6, .8)
-# plot_water_removed()
-# find_operating_range(72, 85, 105, .6, .8)
+plot_VLE(72, 85, 105, .6, .8)
+plot_water_absorbed()
+plot_water_absorbed_alt()
+print(find_operating_range(72, 85, 105, .6, .8, .1))
 
 #1.2
-# plot_power()
+plot_power()
 
 #1.3
-# find_maximum_water_removed()
+print(find_maximum_water_removed())
+print(find_maximum_water_removed_alt())
