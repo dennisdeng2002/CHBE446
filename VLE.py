@@ -9,6 +9,8 @@ mol_water_105 = 0.01622
 # molar mass
 LiCl, H2O = 42.394, 18.01
 LiCl_mols = 1
+# Pa
+P_LiCl = 350
 
 
 # Input T is in C
@@ -233,6 +235,7 @@ def graph_water_absorbed_excel():
     mpl_plt.savefig("Water_Absorbed_Exc")
     mpl_plt.show()
 
+
 def graph_power_excel():
     data = np.loadtxt(open("data2.csv","rb"),delimiter=",")
     x_range = data[0]
@@ -243,18 +246,96 @@ def graph_power_excel():
     mpl_plt.savefig("Power_Required_Exc.png")
     mpl_plt.show()
 
-#1.1
-plot_VLE(72, 85, 105, .6, .8)
-plot_water_absorbed()
-plot_water_absorbed_alt()
-print(find_operating_range(72, 85, 105, .6, .8, .1))
 
-#1.2
-plot_power()
+def plot_time_alt():
+    range = find_operating_range(72, 85, 105, .6, .8, .1)
+    x_range = np.linspace(range[0], range[1], 100)
+    y_range = (170 / find_water_absorbed_alt(x_range, range[0])) / 60
 
-#1.3
-print(find_maximum_water_removed())
-print(find_maximum_water_removed_alt())
+    # Creates straight line between two points
+    x_range_time = (range[0], range[1])
+    y_range_time = (10, 10)
+    mpl_plt.plot(x_range_time, y_range_time, linestyle = '--')
 
-graph_water_absorbed_excel()
-graph_power_excel()
+    mpl_plt.plot(x_range, y_range)
+    mpl_plt.gca().get_yaxis().get_major_formatter().set_useOffset(False)
+    mpl_plt.xlabel("LiCl mole fraction")
+    mpl_plt.ylabel("Time Required")
+    mpl_plt.savefig("Time_Alt")
+    mpl_plt.show()
+
+    return
+
+
+def convert_x_to_X(x):
+    return x / (1 - x)
+
+
+def plot_VLE_XY(Tin, Tout, Treg, RHin, RHout):
+    range = find_operating_range(Tin, Tout, Treg, RHin, RHout, .1)
+
+    Tin, Tout, Treg = convert_F_to_C(Tin), convert_F_to_C(Tout), convert_F_to_C(Treg)
+    x_range = np.linspace(range[0], range[1], 100)
+    y_range = p_vap_solution(x_range, Tin) / P
+
+    X = (1 - convert_x_to_X(x_range))
+    Y = convert_x_to_X(y_range)
+
+    # Creates straight line between two points
+    X_RH = (X[0], X[99])
+    y_RH = convert_RH_to_Pa(RHin, Tin) / P
+    Y_RH = (convert_x_to_X(y_RH), convert_x_to_X(y_RH))
+
+    mpl_plt.plot(X, Y, label = "Equilibrium Line")
+    mpl_plt.plot(X_RH, Y_RH, linestyle = '--', label = "Indoor R.H")
+
+
+    mpl_plt.xlabel("H2O liquid mole ratio")
+    mpl_plt.ylabel("H2O vapor mole Ratio")
+    mpl_plt.savefig("VLE_XY")
+    mpl_plt.show()
+
+
+def solve_abs(Y_1, N):
+    range = find_operating_range(72, 85, 105, .6, .8, .1)
+
+    X = [(1 - convert_x_to_X(range[0]))[0], (1 - convert_x_to_X(range[1]))[0]]
+    Y = [convert_x_to_X(p_vap_solution(range[0], convert_F_to_C(72)) / P)[0], convert_x_to_X(p_vap_solution(range[1], convert_F_to_C(72))/ P)[0]]
+
+    eq_coeff = np.polyfit(X, Y, 1)
+    eq_line = np.poly1d(eq_coeff)
+
+    y_RH = convert_RH_to_Pa(0.6, convert_F_to_C(72)) / P
+    Y_RH = convert_x_to_X(y_RH)
+
+    X_N = X[1]
+    Y_N_1 = Y_RH
+    X_0 = X[0]
+
+    op_coeff = np.polyfit([X_0, X_N], [Y_1, Y_N_1], 1)
+    op_line = np.poly1d(op_coeff)
+
+    counter = 0
+
+
+
+
+# #1.1
+# plot_VLE(72, 85, 105, .6, .8)
+# plot_water_absorbed()
+# plot_water_absorbed_alt()
+# print(find_operating_range(72, 85, 105, .6, .8, .1))
+#
+# #1.2
+# plot_power()
+#
+# #1.3
+# print(find_maximum_water_removed())
+# print(find_maximum_water_removed_alt())
+#
+# graph_water_absorbed_excel()
+# graph_power_excel()
+
+# print(find_moles_of_water(0.6, convert_F_to_C(72), .1))
+# plot_VLE_XY(72, 85, 105, .6, .8)
+solve_abs(0, 0)
