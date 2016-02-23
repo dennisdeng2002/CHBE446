@@ -271,53 +271,78 @@ def convert_x_to_X(x):
     return x / (1 - x)
 
 
-def plot_VLE_XY(Tin, Tout, Treg, RHin, RHout):
+def plot_VLE_XY_abs(Tin, Tout, Treg, RHin, RHout, Y_1, N):
     range = find_operating_range(Tin, Tout, Treg, RHin, RHout, .1)
 
     Tin, Tout, Treg = convert_F_to_C(Tin), convert_F_to_C(Tout), convert_F_to_C(Treg)
     x_range = np.linspace(range[0], range[1], 100)
     y_range = p_vap_solution(x_range, Tin) / P
 
-    X = (1 - convert_x_to_X(x_range))
-    Y = convert_x_to_X(y_range)
+    X_eq = (1 - convert_x_to_X(x_range))
+    Y_eq = convert_x_to_X(y_range)
 
     # Creates straight line between two points
-    X_RH = (X[0], X[99])
+    X_RH = (X_eq[0], X_eq[99])
     y_RH = convert_RH_to_Pa(RHin, Tin) / P
     Y_RH = (convert_x_to_X(y_RH), convert_x_to_X(y_RH))
 
-    mpl_plt.plot(X, Y, label = "Equilibrium Line")
+    X_N = X_eq[0]
+    Y_N_1 = Y_RH[0]
+    X_0 = X_eq[99]
+
+    X_op = (X_0, X_N)
+    Y_op = (Y_1, Y_N_1)
+
+    stages = solve_abs(Y_1, N)
+    X_stage = stages[0]
+    Y_stage = stages[1]
+
+    mpl_plt.plot(X_eq, Y_eq, label = "Equilibrium Line")
     mpl_plt.plot(X_RH, Y_RH, linestyle = '--', label = "Indoor R.H")
+    mpl_plt.plot(X_op, Y_op, label = "Operating Line")
+    mpl_plt.plot(X_stage, Y_stage, '-o')
 
-
+    mpl_plt.legend(loc='lower right')
     mpl_plt.xlabel("H2O liquid mole ratio")
-    mpl_plt.ylabel("H2O vapor mole Ratio")
-    mpl_plt.savefig("VLE_XY")
+    mpl_plt.ylabel("H2O vapor mole ratio")
+    mpl_plt.savefig("VLE_XY_abs_" + str(Y_1) + "_" + str(N) + ".png")
     mpl_plt.show()
 
 
 def solve_abs(Y_1, N):
     range = find_operating_range(72, 85, 105, .6, .8, .1)
 
-    X = [(1 - convert_x_to_X(range[0]))[0], (1 - convert_x_to_X(range[1]))[0]]
-    Y = [convert_x_to_X(p_vap_solution(range[0], convert_F_to_C(72)) / P)[0], convert_x_to_X(p_vap_solution(range[1], convert_F_to_C(72))/ P)[0]]
+    X_eq = [(1 - convert_x_to_X(range[0]))[0], (1 - convert_x_to_X(range[1]))[0]]
+    Y_eq = [convert_x_to_X(p_vap_solution(range[0], convert_F_to_C(72)) / P)[0], convert_x_to_X(p_vap_solution(range[1], convert_F_to_C(72))/ P)[0]]
 
-    eq_coeff = np.polyfit(X, Y, 1)
+    # function of (Y) -> x = my + b
+    eq_coeff = np.polyfit(Y_eq, X_eq, 1)
     eq_line = np.poly1d(eq_coeff)
 
     y_RH = convert_RH_to_Pa(0.6, convert_F_to_C(72)) / P
     Y_RH = convert_x_to_X(y_RH)
 
-    X_N = X[1]
+    X_N = X_eq[1]
     Y_N_1 = Y_RH
-    X_0 = X[0]
+    X_0 = X_eq[0]
 
-    op_coeff = np.polyfit([X_0, X_N], [Y_1, Y_N_1], 1)
+    op_coeff = np.polyfit([X_N, X_0], [Y_1, Y_N_1], 1)
     op_line = np.poly1d(op_coeff)
 
     counter = 0
+    i = 0
+    X = []
+    Y = []
+    X.append(X_N)
+    Y.append(Y_1)
+    while counter < N:
+        X.append(eq_line(Y[-1]))
+        Y.append(Y[-1])
+        X.append(X[-1])
+        Y.append(op_line(X[-1]))
+        counter += 1
 
-
+    return (X, Y)
 
 
 # #1.1
@@ -337,5 +362,6 @@ def solve_abs(Y_1, N):
 # graph_power_excel()
 
 # print(find_moles_of_water(0.6, convert_F_to_C(72), .1))
-# plot_VLE_XY(72, 85, 105, .6, .8)
-solve_abs(0, 0)
+plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.021, 3)
+plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.019, 3)
+plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.017, 3)
