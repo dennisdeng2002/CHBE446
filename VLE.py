@@ -153,7 +153,7 @@ def plot_water_absorbed():
     mpl_plt.gca().get_yaxis().get_major_formatter().set_useOffset(False)
     mpl_plt.xlabel("LiCl mole fraction")
     mpl_plt.ylabel("Water Absorbed (mol/s per mol/s of LiCl)")
-    mpl_plt.savefig("Water_Absorbed")
+    mpl_plt.savefig("Images/Water_Absorbed")
     mpl_plt.show()
 
     return
@@ -168,7 +168,7 @@ def plot_water_absorbed_alt():
     mpl_plt.gca().get_yaxis().get_major_formatter().set_useOffset(False)
     mpl_plt.xlabel("LiCl mole fraction")
     mpl_plt.ylabel("Water Removed (mol/s per mol/s of LiCl)")
-    mpl_plt.savefig("Water_Absorbed_Alt")
+    mpl_plt.savefig("Images/Water_Absorbed_Alt")
     mpl_plt.show()
 
     return
@@ -203,7 +203,7 @@ def plot_power():
     mpl_plt.plot(x, y_range)
     mpl_plt.xlabel("LiCl mole fraction")
     mpl_plt.ylabel("Power Required (kW)")
-    mpl_plt.savefig("Power_Required.png")
+    mpl_plt.savefig("Images/Power_Required.png")
     mpl_plt.show()
 
     return
@@ -232,7 +232,7 @@ def graph_water_absorbed_excel():
     mpl_plt.plot(x_range, y_range)
     mpl_plt.xlabel("LiCl mole fraction")
     mpl_plt.ylabel("Water Removed (mol/s per mol/s of LiCl)")
-    mpl_plt.savefig("Water_Absorbed_Exc")
+    mpl_plt.savefig("Images/Water_Absorbed_Exc")
     mpl_plt.show()
 
 
@@ -243,7 +243,7 @@ def graph_power_excel():
     mpl_plt.plot(x_range, y_range)
     mpl_plt.xlabel("LiCl mole fraction")
     mpl_plt.ylabel("Power Required (kW)")
-    mpl_plt.savefig("Power_Required_Exc.png")
+    mpl_plt.savefig("Images/Power_Required_Exc.png")
     mpl_plt.show()
 
 
@@ -261,7 +261,7 @@ def plot_time_alt():
     mpl_plt.gca().get_yaxis().get_major_formatter().set_useOffset(False)
     mpl_plt.xlabel("LiCl mole fraction")
     mpl_plt.ylabel("Time Required")
-    mpl_plt.savefig("Time_Alt")
+    mpl_plt.savefig("Images/Time_Alt")
     mpl_plt.show()
 
     return
@@ -305,7 +305,7 @@ def plot_VLE_XY_abs(Tin, Tout, Treg, RHin, RHout, Y_1, N):
     mpl_plt.legend(loc='lower right')
     mpl_plt.xlabel("H2O liquid mole ratio")
     mpl_plt.ylabel("H2O vapor mole ratio")
-    mpl_plt.savefig("VLE_XY_abs_" + str(Y_1) + "_" + str(N) + ".png")
+    mpl_plt.savefig("Images/VLE_XY_abs_" + str(Y_1) + "_" + str(N) + ".png")
     mpl_plt.show()
 
 
@@ -345,6 +345,31 @@ def solve_abs(Y_1, N):
     return (X, Y)
 
 
+def plot_VLE_XY_reg(Tin, Tout, Treg, RHin, RHout, Y_1, N):
+    range = find_operating_range(Tin, Tout, Treg, RHin, RHout, .1)
+
+    Tin, Tout, Treg = convert_F_to_C(Tin), convert_F_to_C(Tout), convert_F_to_C(Treg)
+    x_range = np.linspace(range[0], range[1], 100)
+    y_range = p_vap_solution(x_range, Treg) / P
+
+    X_eq = (1 - convert_x_to_X(x_range))
+    Y_eq = convert_x_to_X(y_range)
+
+    # Creates straight line between two points
+    X_RH = (X_eq[0], X_eq[99])
+    y_RH = convert_RH_to_Pa(RHout, Tout) / P
+    Y_RH = (convert_x_to_X(y_RH), convert_x_to_X(y_RH))
+
+    mpl_plt.plot(X_eq, Y_eq, label = "Equilibrium Line")
+    mpl_plt.plot(X_RH, Y_RH, linestyle = '--', label = "Outdoor R.H")
+
+    mpl_plt.legend(loc='upper left')
+    mpl_plt.xlabel("H2O liquid mole ratio")
+    mpl_plt.ylabel("H2O vapor mole ratio")
+    mpl_plt.savefig("Images/VLE_XY_reg.png")
+    mpl_plt.show()
+
+
 # #1.1
 # plot_VLE(72, 85, 105, .6, .8)
 # plot_water_absorbed()
@@ -362,6 +387,7 @@ def solve_abs(Y_1, N):
 # graph_power_excel()
 
 # print(find_moles_of_water(0.6, convert_F_to_C(72), .1))
-plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.021, 3)
-plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.019, 3)
-plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.017, 3)
+# plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.017, 3)
+# plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.019, 3)
+# plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.021, 3)
+plot_VLE_XY_reg(72, 85, 105, .6, .8, 0.017, 1)
