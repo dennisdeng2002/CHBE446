@@ -370,6 +370,154 @@ def plot_VLE_XY_reg(Tin, Tout, Treg, RHin, RHout, Y_1, N):
     mpl_plt.show()
 
 
+def VLE(y_in, V, T1, guess):
+    x_ul = find_operating_range(72, 85, 105, .6, .9, .1)[1]
+
+    T1 = convert_F_to_C(T1)
+
+    L =  1/x_ul
+    x_in = 1 - x_ul
+
+    f = lambda x: y_in * V + L * x_in - (x * L * (1 - x_in) / (1 - x)) \
+                     + p_vap_solution(x, T1)/P * V * (1 - y_in) / (1 - p_vap_solution(x, T1)/P)
+
+    x = sci_opt.fsolve(f, guess)
+
+    V_out = V*(1 - y_in) / (1 - p_vap_solution(1-x, T1)/P)
+
+    x_abs = p_vap_solution(x, T1) / P
+
+    return (y_in*V - x_abs*V_out) / 1.5
+
+
+def p_control(kc, m_in, V_0):
+
+    mol_water = 272.64
+
+    mol = [mol_water * 0.9]
+
+    V = [V_0]
+    mol_air = 10280.5
+
+    for t in range(0, 3600):
+        y_in = (mol[t] + m_in) / mol_air
+        mol.append(mol[t] + m_in - VLE(y_in, V[t], 72, 0.1))
+        RH = mol[t+1] / 272.64
+        e = 0.6 - RH
+        V.append(kc * e + V_0)
+
+    time_range = np.linspace(0, 3600, len(V))
+
+    mpl_plt.plot(time_range, np.array(mol) / mol_water)
+    mpl_plt.xlabel("Time (s)")
+    mpl_plt.ylabel("RH")
+    mpl_plt.savefig("Images/P_RH_{m_in}".format(m_in = m_in))
+    mpl_plt.show()
+    mpl_plt.close()
+
+    mpl_plt.plot(time_range, V)
+    mpl_plt.xlabel("Time (s)")
+    mpl_plt.ylabel("Air Flow Rate (mol/s)")
+    mpl_plt.savefig("Images/P_air_{m_in}".format(m_in = m_in))
+    mpl_plt.show()
+
+
+def pi_control(kc, tau_i, m_in, V_0):
+
+    mol_water = 272.64
+
+    mol = [mol_water * 0.9]
+
+    V = [V_0]
+    mol_air = 10280.5
+
+    e = [0.0]
+
+    for t in range(0, 3600):
+        y_in = (mol[t] + m_in) / mol_air
+        mol.append(mol[t] + m_in - VLE(y_in, V[t], 72, 0.1))
+        RH = mol[t+1] / 272.64
+        e.append(0.6 - RH)
+        V.append(kc * (e[t+1] + sum(e)/tau_i) + V_0)
+
+    time_range = np.linspace(0, 3600, len(V))
+
+    mpl_plt.plot(time_range, np.array(mol) / mol_water)
+    mpl_plt.xlabel("Time (s)")
+    mpl_plt.ylabel("RH")
+    mpl_plt.savefig("Images/PI_RH_{m_in}.png".format(m_in = m_in))
+    mpl_plt.show()
+    mpl_plt.close()
+
+    mpl_plt.plot(time_range, V)
+    mpl_plt.xlabel("Time (s)")
+    mpl_plt.ylabel("Air Flow Rate (mol/s)")
+    mpl_plt.savefig("Images/PI_air_{m_in}.png".format(m_in = m_in))
+    mpl_plt.show()
+
+
+def plot_power_pi():
+
+    area = 5
+
+    hours = [x for x in range(6, 19)]
+    irradiance = [0, 0.2, 0.46, 0.7, 0.89, 1.0, 1.04, 1.0, 0.88, 0.7, 0.46, 0.2, 0]
+    power = 0.2 * area * np.array(irradiance)
+
+    mpl_plt.plot(hours, power)
+
+    conversion_factor = 430 / 61.22 / 1000
+
+    high_hours = [6, 7]
+    high_pump_power = [50 * conversion_factor, 50 * conversion_factor]
+
+    low_hours = [7, 18]
+    low_pump_power = [45 * conversion_factor, 45 * conversion_factor]
+
+    mpl_plt.plot(high_hours, high_pump_power)
+    mpl_plt.plot(low_hours, low_pump_power)
+    mpl_plt.xlabel("Time (hr)")
+    mpl_plt.ylabel("Power (kW)")
+    mpl_plt.savefig("images/PI_power")
+    mpl_plt.show()
+
+
+
+
+
+def pid_control(kc, tau_i, tau_d, m_in, V_0):
+
+    mol_water = 272.64
+
+    mol = [mol_water * 0.9]
+
+    V = [V_0]
+    mol_air = 10280.5
+
+    e = [0.0]
+
+    for t in range(0, 3600):
+        y_in = (mol[t] + m_in) / mol_air
+        mol.append(mol[t] + m_in - VLE(y_in, V[t], 72, 0.1))
+        RH = mol[t+1] / 272.64
+        e.append(0.6 - RH)
+        V.append(kc * (e[t+1] + sum(e)/tau_i + tau_d * (e[t+1] - e[t])) + V_0)
+
+    time_range = np.linspace(0, 3600, len(V))
+
+    mpl_plt.plot(time_range, np.array(mol) / mol_water)
+    mpl_plt.xlabel("Time (s)")
+    mpl_plt.ylabel("RH")
+    mpl_plt.show()
+    mpl_plt.savefig("Images/PID_RH")
+    mpl_plt.close()
+
+    mpl_plt.plot(time_range, V)
+    mpl_plt.xlabel("Time (s)")
+    mpl_plt.ylabel("Air Flow Rate (mol/s)")
+    mpl_plt.savefig("Images/PID_air")
+    mpl_plt.show()
+
 # #1.1
 # plot_VLE(72, 85, 105, .6, .8)
 # plot_water_absorbed()
@@ -390,4 +538,12 @@ def plot_VLE_XY_reg(Tin, Tout, Treg, RHin, RHout, Y_1, N):
 # plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.017, 3)
 # plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.019, 3)
 # plot_VLE_XY_abs(72, 85, 105, .6, .8, 0.021, 3)
-plot_VLE_XY_reg(72, 85, 105, .6, .8, 0.017, 1)
+# plot_VLE_XY_reg(72, 85, 105, .6, .8, 0.017, 1)
+
+# print(VLE(0.04, 10, 72, 0.1))
+# p_control(-3, 0.1, 15)
+# pi_control(-35, 100, 0.1, 10)
+# pi_control(-35, 100, 0.0, 10)
+# pid_control(-35, 100, 100, 0.1, 10)
+
+plot_power_pi()
